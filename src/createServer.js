@@ -27,9 +27,8 @@ function createServer() {
           req.on('end', () => {
             const body = Buffer.concat(chunks).toString();
             const contentType = req.headers['content-type'] || '';
-            const { date, title, amount } = contentType.includes(
-              'application/json',
-            )
+            const isJSON = contentType.includes('application/json');
+            const { date, title, amount } = isJSON
               ? JSON.parse(body) || {}
               : querystring.parse(body) || {};
 
@@ -46,9 +45,29 @@ function createServer() {
               JSON.stringify({ date, title, amount }, null, 2),
             );
 
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ date, title, amount }));
+            if (isJSON) {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ date, title, amount }));
+
+              return;
+            }
+
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+
+            res.end(`
+              <!doctype html>
+              <html lang="en">
+                <head>
+                  <meta charset="UTF-8" />
+                  <title>Expense saved</title>
+                </head>
+                <body>
+                  <h1>Expense saved</h1>
+                  <pre>${JSON.stringify({ date, title, amount }, null, 2)}</pre>
+                  <a href="/">Back</a>
+                </body>
+              </html>
+            `);
           });
         } else {
           res.statusCode = 400;
